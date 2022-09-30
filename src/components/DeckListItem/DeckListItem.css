@@ -1,0 +1,10 @@
+.deck-list-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+}
+
+.deck-list-deck-link:hover {
+    background-color: #e5e5e5;
+}

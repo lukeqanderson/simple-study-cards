@@ -1,0 +1,44 @@
+.deck-list-container {
+    margin-top: 5%;
+    left: 0;
+    right: 0;
+    margin-left: auto;
+    margin-right: auto;
+    max-width: 800px;
+}
+
+.deck-list-header-and-button {
+    display: flex;
+    justify-content: space-between;
+}
+
+.deck-list-line-break {
+    border: 1px solid #DEDCDC;
+}
+
+.deck-list-header {
+    margin-left: 5%;
+}
+
+.new-deck-button {
+    margin-right: 5%;
+}
+
+.add-deck-container {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+}
+
+.deck-name-input {
+    margin-right: 5%;
+    width: 40%;
+}
+
+.deck-name-title {
+    margin-left: 10%;
+}
+
+.deck-name-button {
+    margin-right: 2%;
+}
