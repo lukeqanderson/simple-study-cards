@@ -12,7 +12,7 @@ class Card extends Component {
     }
 
     render() {
-        // destructures state and props
+        // destructures state and props 
         const { question, answer, onEditCardQuestion, onEditCardAnswer } = this.props;
         const { isHidden, editing } = this.state;
 
