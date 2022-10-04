@@ -22,31 +22,31 @@ class App extends Component {
             decks: [{
                 name: "Science",
                 cards: [
-                    "What is the powerhouse of a cell?",
+                    ["What is the powerhouse of a cell?",
                     "Mitochondria",
-                    202309290544,
-                    "What is the symbol for water?",
+                    202309290544],
+                    ["What is the symbol for water?",
                     "H2O",
-                    202309290544,
-                    "What is the symbol for iron?",
+                    202309290544],
+                    ["What is the symbol for iron?",
                     "fe",
-                    202210290544
+                    202209290544]
                 ],
                 toReviewCount: 0,
-                totalCount: 3
+                totalCount: 0 
             },
             {
                 name: "History",
                 cards: [
-                    "What year did WW2 end?",
+                    ["What year did WW2 end?",
                     "1945",
-                    202209290544,
-                    "What year did America declare independence?",
+                    202209290544],
+                    ["What year did America declare independence?",
                     "1776",
-                    202209290544
+                    202209290544]
                 ],
-                toReviewCount: 2,
-                totalCount: 2
+                toReviewCount: 0,
+                totalCount: 0 
             },
             {
                 name: "Geography",
@@ -55,8 +55,18 @@ class App extends Component {
                 totalCount: 0
             }
             ],
+            // decks list state
             addingDeck: false,
-            newDeckName: ""
+            newDeckName: "",
+            // decks list item state
+            currentDeck: null,
+            // card state
+            currentCard: null,
+            editingCard: false,
+            editingFromStudyingOrCardList: "cardList",
+            cardAnswerIsHidden: true,
+            editingCardQuestion: "",
+            editingCardAnswer: ""
   }
 }
 
@@ -75,29 +85,27 @@ class App extends Component {
     this.setState({ route: newRoute });
   }
 
-  // functions to change the question and answer
-  // onEditCardQuestion = (event) => {
-    // this.setState({ question: event.target.value });
-  // }
+  // function to ensure deck counts are updated on route change to decks component
+  changeRouteDecks = () => {
+    this.updateCardCounts();
+    this.setState({route : "decks"});
+  }
 
-  // onEditCardAnswer = (event) => {
-    // this.setState({ answer: event.target.value });
-  // }
 
 
 
   //--------------------------- DECK LIST FUNCTIONS ------------------------------------------------
 
-    // function to delete card at a certain index
-    deleteCard = (startingIndex) => {
-        let newDeck = [];
+    // function to delete deck at a certain index
+    deleteDeck = (startingIndex) => {
+        let newDecks = [];
         //only splices if there are cards to delete
         if (this.state.decks.length > 1) {
             this.state.decks.splice(startingIndex, 1);
-            newDeck = this.state.decks;
+            newDecks = this.state.decks;
         }
         // sets state to new deck to force rerender
-        this.setState({ decks: newDeck });
+        this.setState({ decks: newDecks });
     }
 
     //function to toggle deck creation mode
@@ -124,15 +132,171 @@ class App extends Component {
         // toggles deck creation
         this.toggleDeckCreation();
     }
+
+    // function to update card counts for all decks on Deck component render
+    updateCardCounts = () => {
+      let newDecks = this.state.decks;
+      // stores current date and time
+      let currentTime = timestamp.utc('YYYYMMDDHHmm');
+      // loops through all items in array
+      for (let i = 0; i < newDecks.length; i++) {
+        newDecks[i].totalCount = newDecks[i].cards.length;
+        // counts all cards due for review
+        let reviewCount = newDecks[i].cards.filter(card => {
+          if(card[2] < currentTime) return true;
+          else return false;
+        }).length;
+        newDecks[i].toReviewCount = reviewCount;
+      }
+      // updates state to newDecks
+      this.setState({decks : newDecks});
+    }
+
   //----------------------------------------------------------------------------------------------
+  
+  //--------------------------- DECK LIST ITEM FUNCTIONS ------------------------------------------------
+  
+  // function to update the current deck when user clicks on deck component
+  updateCurrentDeck = (id) => {
+    this.setState({currentDeck : id});
+  } 
+
+  // function to update deck and re-route to selected deck list item
+  onDeckListItemSelection = (id) => {
+    this.updateCurrentDeck(id-1);
+    this.onRouteChange("cardList");
+  }
+
+  //----------------------------------------------------------------------------------------------
+
+  //--------------------------- CARD LIST ITEM FUNCTIONS ------------------------------------------------
+  
+  // function to decriment card count for a particular deck
+  decrimentTotalCardCount = (deckIndex) => {
+    let newDecks = this.state.decks;
+    newDecks[deckIndex].totalCount--;
+    // sets state of deck to updated deck
+    this.setState({decks : newDecks})
+  }
+
+  decrimentReviewCount = (deckIndex, cardIndex) => {
+    let newDecks = this.state.decks;
+    // stores current date and time
+    let currentTime = timestamp.utc('YYYYMMDDHHmm');
+    // counts all cards due for review
+    let reviewCount = newDecks[deckIndex].cards.filter(card => {
+      if(card[2] < currentTime) return true;
+      else return false;
+    }).length;
+    // decriments review count if deleted deck is due
+    if (newDecks[deckIndex].cards[cardIndex][2] < currentTime) {
+      reviewCount--;
+    }
+    newDecks[deckIndex].toReviewCount = reviewCount;
+    this.setState({decks : newDecks});
+  }
+
+  // function to delete a card at a particular index
+  deleteCard = (deckIndex, cardIndex) => {
+        // updates to study index and decriments if deleted card is due
+        this.decrimentReviewCount(deckIndex, cardIndex);
+        //only splices if there are cards to delete
+        if (this.state.decks[deckIndex].cards.length > 1) {
+            this.state.decks[deckIndex].cards.splice(cardIndex, 1);
+        }
+        else {
+          this.state.decks[deckIndex].cards.pop();
+        }
+        // sets state to force render on the DOM
+        this.setState({decks : this.state.decks});
+        // decriments the total number of cards
+        this.decrimentTotalCardCount(deckIndex);
+  }
+
+  setToEditCardMode = (currentCard) => {
+    let newState = this.state;
+    newState.currentCard = currentCard;
+    newState.editingFromStudyingOrCardList = "cardList";
+    this.setState({newState});
+    this.toggleEditMode();
+    this.onRouteChange("card");
+  }
+
+  //----------------------------------------------------------------------------------------------
+
+  //--------------------------- CARD FUNCTIONS ------------------------------------------------
+
+    // toggle whether answer is hidden
+    toggleHideAnswer = () => {
+      this.setState({ cardAnswerIsHidden: !this.state.cardAnswerIsHidden });
+    }
+
+
+    // function to change isCorrect state
+    markAnswerCorrect = () => {
+        this.setState({ isCorrect: !this.state.isCorrect});
+    }
+
+    // function to toggle between editing and display mode
+    toggleEditMode = () => {
+        // gets the opposite of the current editing mode we are in
+        const oppositeMode = !this.state.editing;
+        this.setState({ editing: oppositeMode })
+        // hides answer after editing
+        this.toggleHideAnswer();
+    }
+
+    // function to change the question and answer
+    setEdits = (currentDeck, currentCard) => {
+      let newState = this.state;
+      // only sets edits if there have been edits made
+      if(newState.editingCardQuestion !== "") 
+        newState.decks[currentDeck].cards[currentCard][0] = newState.editingCardQuestion;
+      if(newState.editingCardQuestion !== "") 
+        newState.decks[currentDeck].cards[currentCard][1] = newState.editingCardAnswer;
+      // resets edit fields to detect new edits
+      newState.editingCardQuestion = "";
+      newState.editingCardAnswer = "";
+      this.setState({newState });
+    }
+
+    // functions to track changes when editing
+    onEditCardQuestion = (event) => {
+      this.setState({ editingCardQuestion: event.target.value });
+    }
+    onEditCardAnswer = (event) => {
+      this.setState({ editingCardAnswer : event.target.value });
+    }
+
+    // function to set edits and route to correct parent element
+    setEditsAndRoute = (currentDeck, currentCard) => {
+      this.setEdits(currentDeck, currentCard);
+      this.onRouteChange(this.state.editingFromStudyingOrCardList);
+      this.toggleEditMode();
+    }
+
+    // function to add a new card and enter edit mode
+    addAndEditCard = (currentDeck) => {
+      let newDeck = this.state.decks;
+      const newCardIndex = newDeck[currentDeck].cards.length;
+      newDeck[currentDeck].cards.push(["","",timestamp.utc("YYYYMMDDHHmm")]);
+      this.setState({decks : newDeck});
+      this.setToEditCardMode(newCardIndex);
+    }
+  //----------------------------------------------------------------------------------------------
+
   render() {
     // destructures the state to individual props
-    const { route, isSignedIn, decks, addingDeck, deleteCard } = this.state;
+    const { route, isSignedIn, decks, addingDeck, currentDeck, currentCard, editingCard, editingFromStudyingOrCardList, cardAnswerIsHidden  } = this.state;
     return (
       <div className="App">
         {/* passes onRouteChange and isSignedIn as props to allow them to be called
         and changed the NavigationBar component */}
-        <NavigationBar onRouteChange={this.onRouteChange} isSignedIn={isSignedIn} />
+        <NavigationBar 
+        onRouteChange={this.onRouteChange} 
+        changeRouteDecks={this.changeRouteDecks}
+        isSignedIn={isSignedIn} 
+        />
         <h1 className="fw8 f1 lh-title ma3">Simple Study Cards</h1>
         {
           // ternary statement to display different component depending on route
@@ -143,7 +307,9 @@ class App extends Component {
                 ? <Register onRouteChange={this.onRouteChange} />
                 : (
                   route === "home"
-                    ? <Home onRouteChange={this.onRouteChange} />
+                    ? <Home 
+                    changeRouteDecks={this.changeRouteDecks}
+                    />
                     : (
                       route === "decks"
                         ?
@@ -153,17 +319,35 @@ class App extends Component {
                             toggleDeckCreation={this.toggleDeckCreation}
                             nameInputChanges={this.nameInputChanges}
                             addDeck={this.addDeck}
-                            deleteCard={this.deleteCard}
+                            deleteDeck={this.deleteDeck}
+                            onDeckListItemSelection = {this.onDeckListItemSelection}
                         />
-                        // <Card
-                        //   question={question}
-                        //   answer={answer}
-                        //   onEditCardQuestion={this.onEditCardQuestion}
-                        //   onEditCardAnswer={this.onEditCardAnswer} />
                         : (
                           route === "cardList"
-                            ? <CardList />
-                            : <h1>test</h1>
+                            ? <CardList 
+                              decks={decks}
+                              currentDeck={currentDeck}
+                              deleteCard={this.deleteCard}
+                              setToEditCardMode={this.setToEditCardMode}
+                              addAndEditCard={this.addAndEditCard}
+                            />
+                            : ( route === "card"
+                            ?<Card
+                              decks={decks}
+                              currentDeck={currentDeck}
+                              currentCard={currentCard}
+                              editingCard={editingCard} 
+                              editingFromStudyingOrCardList={editingFromStudyingOrCardList}
+                              cardAnswerIsHidden={cardAnswerIsHidden}
+                              toggleHideAnswer={this.toggleHideAnswer}
+                              markAnswerCorrect={this.markAnswerCorrect}
+                              toggleEditMode={this.toggleEditMode}
+                              onEditCardQuestion={this.onEditCardQuestion}
+                              onEditCardAnswer={this.onEditCardAnswer}
+                              setEditsAndRoute={this.setEditsAndRoute}
+                            /> 
+                            : <></>
+                            )
                         )
                     )
                 )

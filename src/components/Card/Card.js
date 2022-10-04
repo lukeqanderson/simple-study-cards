@@ -1,43 +1,12 @@
-import React, { Component } from "react";
+import React from "react";
 import "./Card.css";
 
-class Card extends Component {
-    constructor() {
-        super();
-        this.state = {
-            editing: false,
-            isHidden: true,
-            isCorrect: null
-        }
-    }
+const Card = ({decks, currentDeck, currentCard, editingCard, editingFromStudyingOrCardList, cardAnswerIsHidden, toggleHideAnswer, markAnswerCorrect, toggleEditMode, onEditCardQuestion, onEditCardAnswer, setEditsAndRoute}) => {
 
-    render() {
-        // destructures state and props 
-        const { question, answer, onEditCardQuestion, onEditCardAnswer } = this.props;
-        const { isHidden, editing } = this.state;
-
-        // toggle whether answer is hidden
-        const hideAnswer = (isHidden) => {
-            this.setState({ isHidden: isHidden });
-        }
-
-        // function to change isCorrect state
-        const markAnswerCorrect = (answerIsRight) => {
-            this.setState({ isCorrect: answerIsRight });
-        }
-
-        // function to toggle between editing and display mode
-        const toggleEditMode = () => {
-            // gets the opposite of the current editing mode we are in
-            const oppositeMode = !this.state.editing;
-            this.setState({ editing: oppositeMode })
-            // hides answer after editing
-            hideAnswer(true);
-        }
-
-        return (
+    return (
             <div className="card-container w-80 w-60-l br4 ba b--black-10 positioned bg-near-white shadow-3">
-                {editing === false
+                <h1 className="f2 mb4">{decks[currentDeck].name}</h1>
+                {editingCard === false && editingFromStudyingOrCardList === "studying"
                     ? <div>
                         <div className="review-counter-container mt2 mb2">
                             <p className="red try-again-counter b">Try Again: 10</p>
@@ -51,13 +20,13 @@ class Card extends Component {
                             <p className="f6 pointer ma2 mr3 br4 ba bw1 b--black dim ph3 pv2 mb2 dib white bg-dark-red">Delete</p>
                         </div>
                         <div>
-                            <h2>{question}</h2>
+                            <h2>{decks[currentDeck].cards[currentCard][0]}</h2>
                             {
-                                isHidden === true
-                                    ? <p onClick={() => hideAnswer(false)}
+                                cardAnswerIsHidden === true
+                                    ? <p onClick={(toggleHideAnswer)}
                                         className="f6 pointer ma2 mb4 mr3 br4 ba bw1 b--black dim ph3 pv2 mb2 dib white bg-gray">Show Answer</p>
                                     : <div>
-                                        <p className="f3">{answer}</p>
+                                        <p className="f3">{decks[currentDeck].cards[currentCard][0]}</p>
                                         <div className="ma2 mb4">
                                             <p className="ma0 i">Did you get it correct?</p>
                                             <div className="correct-button-container">
@@ -77,26 +46,26 @@ class Card extends Component {
                             }
                         </div>
                     </div>
-                    :
-                    <div>
+                    : <div>
                         <div>
-                            <h2>Question: </h2>
+                            <p>Question: </p>
                             <input
                                 name="question"
-                                defaultValue={question}
+                                defaultValue={decks[currentDeck].cards[currentCard][0]}
                                 type="text"
                                 onChange={onEditCardQuestion}
                             />
-                            <h2>Answer: </h2>
+                            <p>Answer: </p>
                             <input
                                 name="answer"
-                                defaultValue={answer}
+                                defaultValue={decks[currentDeck].cards[currentCard][1]}
                                 type="text"
                                 onChange={onEditCardAnswer}
                             />
                         </div>
                         <div className="ma2 mb4">
-                            <p onClick={toggleEditMode}
+                            <p 
+                                onClick={() => setEditsAndRoute(currentDeck, currentCard)}
                                 className="f6 pointer ml1 br4 ba bw1 b--blue dim ph3 pv2 mb2 dib white bg-white blue">Done Editing</p>
                         </div>
                     </div>
@@ -105,6 +74,6 @@ class Card extends Component {
             </div>
         );
     }
-}
+
 
 export default Card;

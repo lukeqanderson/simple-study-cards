@@ -1,7 +1,7 @@
 import React from "react";
 import "./Home.css";
 
-const Home = ({ onRouteChange }) => {
+const Home = ({ changeRouteDecks }) => {
     return (
         <div className="home-container br4 ba b--black-10 w-80 w-60-l positioned bg-near-white shadow-3">
             <div className="pa4">
@@ -27,7 +27,7 @@ const Home = ({ onRouteChange }) => {
                     </div>
                     <div className="Name">
                         <input className="b ph3 pv2 input-reset ba b--black bg-moon-gray grow pointer f6 dib"
-                            onClick={() => onRouteChange("decks")} type="submit" value="Decks" />
+                            onClick={changeRouteDecks} type="submit" value="Decks" />
                     </div>
                 </div>
             </div>

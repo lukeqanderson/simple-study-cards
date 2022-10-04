@@ -3,7 +3,7 @@ import "./DeckList.css";
 import DeckListItem from "../DeckListItem/DeckListItem";
 
 
-const DeckList = ({decks, addingDeck, deleteCard, toggleDeckCreation, nameInputChanges, addDeck}) => {
+const DeckList = ({decks, addingDeck, deleteDeck, toggleDeckCreation, onDeckListItemSelection ,nameInputChanges, addDeck}) => {
         // function that maps through the decks to display the 
         // individual desks in a DeckList component
         const renderDeckList = decks.map((deck, i) => {
@@ -14,7 +14,8 @@ const DeckList = ({decks, addingDeck, deleteCard, toggleDeckCreation, nameInputC
                     name={deck.name}
                     toReviewCount={deck.toReviewCount}
                     totalCount={deck.totalCount}
-                    deleteCard={deleteCard}
+                    deleteDeck={deleteDeck}
+                    onDeckListItemSelection={onDeckListItemSelection}
                 />
             );
         })
