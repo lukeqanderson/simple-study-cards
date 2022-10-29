@@ -7,70 +7,33 @@ import Register from './components/Register/Register';
 import CardList from './components/CardList/CardList';
 import Card from './components/Card/Card';
 import DeckList from './components/DeckList/DeckList';
+import LoadingData from './components/LoadingData/LoadingData';
 
 //imports time stamp for easy time tracking
 //note, to use time do timestamp.utc('YYYYMMDDHHmm')
 const timestamp = require('time-stamp');
+
+// cards are within the deck component
+
+/* Card are structured in the following way by index: 
+          0: Question
+          1: Answer
+          2: Next review Timestamp
+          3: SRS Level (space between next review)
+          4: Unique Card Number*/
 
 
 class App extends Component {
   // constructor to define state of the App component
   constructor() {
     super();
+    // initial state to route to sign in before user is authenticated
     this.state = {
+      currentUser: '', // stores current username
       route: 'signIn', //to navigate and display different compoenent based on route
-      isSignedIn: false, // to determine if signed in or not
-      nextCardNumber: 6, //to assign next card number to newly created cards
-      decks: [{
-        name: "Science",
-        cards: [
-          /* Card are structured in the following way by index: 
-          0: Question
-          1: Answer
-          2: Next review Timestamp
-          3: SRS Level (space between next review)
-          4: Unique Card Number*/
-          ["What is the powerhouse of a cell?",
-            "Mitochondria",
-            "202309290544",
-            0, 1],
-          ["What is the symbol for water?",
-            "H2O",
-            "202209290544",
-            0, 2],
-          ["What is the symbol for iron?",
-            "fe",
-            "202209290544",
-            0, 3]
-        ],
-        toReviewCount: 0,
-        totalCount: 0,
-        studying: []
-      },
-      {
-        name: "History",
-        cards: [
-          ["What year did WW2 end?",
-            "1945",
-            "202209290544",
-            0, 4],
-          ["What year did America declare independence?",
-            "1776",
-            "202209290544",
-            0, 5]
-        ],
-        toReviewCount: 0,
-        totalCount: 0,
-        studying: []
-      },
-      {
-        name: "Geography",
-        cards: [],
-        toReviewCount: 0,
-        totalCount: 0,
-        studying: []
-      }
-      ],
+      isSignedIn: false,
+      nextCardNumber: 1, //to assign next card number to newly created cards
+      decks: [],
       // decks list state
       addingDeck: false,
       newDeckName: "",
@@ -92,7 +55,11 @@ class App extends Component {
   // state of route
   onRouteChange = (newRoute) => {
     if (newRoute === "signOut") {
-      this.setState({ isSignedIn: false });
+      // changes state to reflect sign out
+      let newState = this.state;
+      newState.isSignedIn = false;
+      newState.currentUser = "";
+      this.setState({ newState });
     }
     else if (newRoute === "home") {
       this.setState({ isSignedIn: true });
@@ -103,7 +70,7 @@ class App extends Component {
   // function to ensure deck counts are updated on route change to decks component
   changeRouteDecks = () => {
     this.updateCardCounts();
-    this.setState({ route: "decks" });
+    this.onRouteChange("decks");
   }
 
   // function to toggle between editing and display mode
@@ -122,6 +89,56 @@ class App extends Component {
     this.onRouteChange("card");
   }
 
+  // fetches user data through post request to backend
+  fetchUserData = () => {
+    // checks sign in information with backend
+    fetch('http://localhost:4000/user-data', {
+      method: 'post',
+      headers: { 'Content-Type': 'application/json' },
+      // sends current user information in json
+      body: JSON.stringify({
+        currentUser: this.state.currentUser
+      })
+    })
+      .then(res => res.json())
+      .then(data => {
+        const newState = data;
+        // sets state with user data
+        this.setState(newState);
+      })
+  }
+
+  // saves user data on database
+  saveData = () => {
+    // checks sign in information with backend
+    fetch('http://localhost:4000/save-data', {
+      method: 'post',
+      headers: { 'Content-Type': 'application/json' },
+      // sends current user information in json
+      body: JSON.stringify({
+        currentUser: this.state.currentUser,
+        userdata: JSON.stringify(this.state)
+      })
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data !== "User data saved") {
+          console.log("Update failed to save");
+        }
+      })
+  }
+
+  //----------------------------------------------------------------------------------------------
+
+  //-------------------------- SIGN IN FUNCTIONS ------------------------
+
+  // function to set state of current user to retreive user data on home page render
+  setCurrentUser = (username) => {
+    this.setState({ currentUser: username });
+  }
+
+  //----------------------------------------------------------------------------------------------
+
 
   //--------------------------- DECK LIST FUNCTIONS ------------------------------------------------
 
@@ -135,11 +152,19 @@ class App extends Component {
     }
     // sets state to new deck to force rerender
     this.setState({ decks: newDecks });
+    // updates database after half a second to allow state to update on change
+    setTimeout(() => {
+      this.saveData();
+    }, 500);
   }
 
   //function to toggle deck creation mode
   toggleDeckCreation = () => {
     this.setState({ addingDeck: !this.state.addingDeck });
+    // updates database after half a second to allow state to update on change
+    setTimeout(() => {
+      this.saveData();
+    }, 500);
   }
 
   //function to capture changes in name
@@ -154,12 +179,17 @@ class App extends Component {
       name: this.state.newDeckName,
       cards: [],
       toReviewCount: 0,
-      totalCount: 0
+      totalCount: 0,
+      studying: []
     }
     // adds deck to state
     this.state.decks.push(newObject);
     // toggles deck creation
     this.toggleDeckCreation();
+    // updates database after half a second to allow state to update on change
+    setTimeout(() => {
+      this.saveData();
+    }, 500);
   }
 
   // function to update card counts for all decks on Deck component render
@@ -179,6 +209,10 @@ class App extends Component {
     }
     // updates state to newDecks
     this.setState({ decks: newDecks });
+    // updates database after 500 milliseconds to allow state to update on change
+    setTimeout(() => {
+      this.saveData();
+    }, 500);
   }
 
   //----------------------------------------------------------------------------------------------
@@ -240,6 +274,10 @@ class App extends Component {
     this.setState({ decks: this.state.decks });
     // decriments the total number of cards
     this.decrimentTotalCardCount(deckIndex);
+    // updates database after half a second to allow state to update on change
+    setTimeout(() => {
+      this.saveData();
+    }, 500);
   }
 
   // method to set study array and enter study mode
@@ -303,6 +341,10 @@ class App extends Component {
     //routes back to card list component
     this.onRouteChange("cardList");
     this.toggleEditMode();
+    // updates database after half a second to allow state to update on change
+    setTimeout(() => {
+      this.saveData();
+    }, 500);
   }
 
   // function to add a new card and enter edit mode
@@ -312,6 +354,10 @@ class App extends Component {
     newState.decks[currentDeck].cards.push(["", "", timestamp.utc("YYYYMMDDHHmm"), 0, newState.nextCardNumber++]);
     this.setState({ newState });
     this.setToEditCardMode(newCardIndex);
+    // updates database after half a second to allow state to update on change
+    setTimeout(() => {
+      this.saveData();
+    }, 500);
   }
 
   // // method to determine if a year is a leap year
@@ -439,6 +485,10 @@ class App extends Component {
     // sets the answer to hidden again
     newState.cardAnswerIsHidden = true;
     this.setState({ newState });
+    // updates database after half a second to allow state to update on change
+    setTimeout(() => {
+      this.saveData();
+    }, 500);
   }
 
   // method to remove card from studying deck and update card due time and level on correct answer
@@ -454,6 +504,10 @@ class App extends Component {
     // sets the answer to hidden again
     newState.cardAnswerIsHidden = true;
     this.setState({ newState });
+    // updates database after half a second to allow state to update on change
+    setTimeout(() => {
+      this.saveData();
+    }, 500);
   }
 
 
@@ -476,7 +530,10 @@ class App extends Component {
         {
           // ternary statement to display different component depending on route
           route === "signIn" || route === "signOut"
-            ? <SignIn onRouteChange={this.onRouteChange} />
+            ? <SignIn
+              onRouteChange={this.onRouteChange}
+              setCurrentUser={this.setCurrentUser}
+            />
             : (
               route === "register"
                 ? <Register onRouteChange={this.onRouteChange} />
@@ -523,7 +580,14 @@ class App extends Component {
                                 rightAnswer={this.rightAnswer}
                                 changeRouteDecks={this.changeRouteDecks}
                               />
-                              : <h1>Error, route not found.</h1>
+                              : (route === "loadingData"
+                                ? <LoadingData
+                                  route={route}
+                                  fetchUserData={this.fetchUserData}
+                                  onRouteChange={this.onRouteChange}
+                                />
+                                : <h1>Error, route not found.</h1>
+                              )
                             )
                         )
                     )
