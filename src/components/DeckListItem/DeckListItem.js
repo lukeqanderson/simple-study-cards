@@ -15,14 +15,14 @@ const DeckListItem = ({ name, id, toReviewCount, totalCount, deleteDeck, onDeckL
                         //tell which decks need studing
                         toReviewCount > 0
                             ? <span className="blue i">
-                                {"  ("} needs studying {")"}
+                                {"  ("}Due{")"}
                             </span>
                             : <></>
                     }
                 </p>
                 <p className="deck-list-review-count ma0">{toReviewCount} / {totalCount}</p>
             </li>
-            <p onClick={() => deleteDeck(id-1)} className="f6 pointer ba b--black dim ph3 pv2 ma0 mb1 dib bg-dark-red black">Delete</p>
+            <p onClick={() => deleteDeck(id - 1)} className="f6 pointer ba b--black dim ph3 pv2 ma0 mb1 dib bg-dark-red black">Delete</p>
         </div>
     );
 }

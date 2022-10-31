@@ -92,7 +92,7 @@ class App extends Component {
   // fetches user data through post request to backend
   fetchUserData = () => {
     // checks sign in information with backend
-    fetch('http://localhost:4000/user-data', {
+    fetch(process.env.REACT_APP_BACKEND_URL + 'user-data', {
       method: 'post',
       headers: { 'Content-Type': 'application/json' },
       // sends current user information in json
@@ -111,7 +111,7 @@ class App extends Component {
   // saves user data on database
   saveData = () => {
     // checks sign in information with backend
-    fetch('http://localhost:4000/save-data', {
+    fetch(process.env.REACT_APP_BACKEND_URL + 'save-data', {
       method: 'post',
       headers: { 'Content-Type': 'application/json' },
       // sends current user information in json
@@ -151,20 +151,18 @@ class App extends Component {
       newDecks = this.state.decks;
     }
     // sets state to new deck to force rerender
-    this.setState({ decks: newDecks });
-    // updates database after half a second to allow state to update on change
-    setTimeout(() => {
+    this.setState({ decks: newDecks }, () => {
+      //saves to db
       this.saveData();
-    }, 500);
+    });
   }
 
   //function to toggle deck creation mode
   toggleDeckCreation = () => {
-    this.setState({ addingDeck: !this.state.addingDeck });
-    // updates database after half a second to allow state to update on change
-    setTimeout(() => {
+    this.setState({ addingDeck: !this.state.addingDeck }, () => {
+      //saves to db
       this.saveData();
-    }, 500);
+    });
   }
 
   //function to capture changes in name
@@ -186,10 +184,6 @@ class App extends Component {
     this.state.decks.push(newObject);
     // toggles deck creation
     this.toggleDeckCreation();
-    // updates database after half a second to allow state to update on change
-    setTimeout(() => {
-      this.saveData();
-    }, 500);
   }
 
   // function to update card counts for all decks on Deck component render
@@ -208,11 +202,10 @@ class App extends Component {
       newDecks[i].toReviewCount = reviewCount;
     }
     // updates state to newDecks
-    this.setState({ decks: newDecks });
-    // updates database after 500 milliseconds to allow state to update on change
-    setTimeout(() => {
+    this.setState({ decks: newDecks }, () => {
+      //saves to db
       this.saveData();
-    }, 500);
+    });
   }
 
   //----------------------------------------------------------------------------------------------
@@ -227,7 +220,10 @@ class App extends Component {
   // function to update deck and re-route to selected deck list item
   onDeckListItemSelection = (id) => {
     this.updateCurrentDeck(id - 1);
-    this.onRouteChange("cardList");
+    this.onRouteChange("cardList", () => {
+      //saves to db
+      this.saveData();
+    });
   }
 
   //----------------------------------------------------------------------------------------------
@@ -261,8 +257,7 @@ class App extends Component {
 
   // function to delete a card at a particular index
   deleteCard = (deckIndex, cardIndex) => {
-    // updates to study index and decriments if deleted card is due
-    this.decrimentReviewCount(deckIndex, cardIndex);
+
     //only splices if there are cards to delete
     if (this.state.decks[deckIndex].cards.length > 1) {
       this.state.decks[deckIndex].cards.splice(cardIndex, 1);
@@ -271,13 +266,15 @@ class App extends Component {
       this.state.decks[deckIndex].cards.pop();
     }
     // sets state to force render on the DOM
-    this.setState({ decks: this.state.decks });
-    // decriments the total number of cards
-    this.decrimentTotalCardCount(deckIndex);
-    // updates database after half a second to allow state to update on change
-    setTimeout(() => {
-      this.saveData();
-    }, 500);
+    this.setState({ decks: this.state.decks }, () => {
+      this.decrimentTotalCardCount(deckIndex, () => {
+        //saves to db
+        // updates to study index and decriments if deleted card is due
+        this.decrimentReviewCount(deckIndex, cardIndex, () => {
+          this.saveData()
+        });
+      })
+    });
   }
 
   // method to set study array and enter study mode
@@ -484,11 +481,9 @@ class App extends Component {
     newState.decks[currentDeck].studying.push(currentCardIndex);
     // sets the answer to hidden again
     newState.cardAnswerIsHidden = true;
-    this.setState({ newState });
-    // updates database after half a second to allow state to update on change
-    setTimeout(() => {
+    this.setState({ newState }, () => {
       this.saveData();
-    }, 500);
+    });
   }
 
   // method to remove card from studying deck and update card due time and level on correct answer
@@ -503,11 +498,9 @@ class App extends Component {
     newState.decks[currentDeck].studying.splice(0, 1);
     // sets the answer to hidden again
     newState.cardAnswerIsHidden = true;
-    this.setState({ newState });
-    // updates database after half a second to allow state to update on change
-    setTimeout(() => {
+    this.setState({ newState }, () => {
       this.saveData();
-    }, 500);
+    });
   }
 
 

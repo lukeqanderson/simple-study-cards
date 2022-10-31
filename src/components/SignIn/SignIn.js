@@ -22,7 +22,7 @@ class SignIn extends Component {
     // sends sign in information to backend
     onSubmitSignIn = () => {
         // checks sign in information with backend
-        fetch('http://localhost:4000/signin', {
+        fetch(process.env.REACT_APP_BACKEND_URL + 'signin', {
             method: 'post',
             headers: { 'Content-Type': 'application/json' },
             // sends items in json

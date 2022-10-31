@@ -53,7 +53,7 @@ class Register extends Component {
         else {
             this.timeOutButton();
             // checks registration information with backend
-            fetch('http://localhost:4000/register', {
+            fetch(process.env.REACT_APP_BACKEND_URL + 'register', {
                 method: 'post',
                 headers: { 'Content-Type': 'application/json' },
                 // sends items in json
