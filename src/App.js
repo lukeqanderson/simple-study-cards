@@ -362,7 +362,7 @@ class App extends Component {
     const newCardIndex = newState.decks[currentDeck].cards.length;
     newState.decks[currentDeck].cards.push(["", "", timestamp.utc("YYYYMMDDHHmm"), 0, newState.nextCardNumber++]);
     this.setState({ newState });
-    this.setToEditCardMode(newCardIndex);
+    this.setToEditCardMode(currentDeck, newCardIndex);
     // updates database after half a second to allow state to update on change
     setTimeout(() => {
       this.saveData();

@@ -46,7 +46,6 @@ class Search extends Component {
                 <div>
                     {/* renders card list within scroll */}
                     <Scroll>
-
                         {renderCardList}
                     </Scroll>
                 </div>
