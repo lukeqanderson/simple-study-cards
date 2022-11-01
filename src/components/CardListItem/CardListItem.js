@@ -13,7 +13,7 @@ const CardListItem = ({ question, id, deleteCard, currentDeck, setToEditCardMode
                 <p className="card-list-review-count ma0"></p>
             </li>
             <p
-                onClick={() => setToEditCardMode(id)}
+                onClick={() => setToEditCardMode(currentDeck, id)}
                 className="f6 pointer ba b--black dim ph3 pv2 ma0 mb1 dib bg-moon-gray black">Edit</p>
             <p
                 onClick={() => deleteCard(currentDeck, id)}

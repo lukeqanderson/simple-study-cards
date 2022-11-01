@@ -8,6 +8,7 @@ import CardList from './components/CardList/CardList';
 import Card from './components/Card/Card';
 import DeckList from './components/DeckList/DeckList';
 import LoadingData from './components/LoadingData/LoadingData';
+import Search from './components/Search/Search';
 
 //imports time stamp for easy time tracking
 //note, to use time do timestamp.utc('YYYYMMDDHHmm')
@@ -44,7 +45,9 @@ class App extends Component {
       editingCard: false,
       cardAnswerIsHidden: true,
       editingCardQuestion: "",
-      editingCardAnswer: ""
+      editingCardAnswer: "",
+      editingFrom: "cardList",
+      searchField: ""
     }
   }
 
@@ -64,6 +67,14 @@ class App extends Component {
     else if (newRoute === "home") {
       this.setState({ isSignedIn: true });
     }
+    else if (newRoute === "cardList") {
+      // to return to card list after edits
+      this.setState({ editingFrom: "cardList" });
+    }
+    else if (newRoute === "search") {
+      // to return to search after edits
+      this.setState({ editingFrom: "search" });
+    }
     this.setState({ route: newRoute });
   }
 
@@ -81,9 +92,10 @@ class App extends Component {
   }
 
   // sets the card to the mode for editing an individual card from the card list
-  setToEditCardMode = (currentCard) => {
+  setToEditCardMode = (currentDeck, currentCard) => {
     let newState = this.state;
     newState.currentCard = currentCard;
+    newState.currentDeck = currentDeck;
     this.setState({ newState });
     this.toggleEditMode();
     this.onRouteChange("card");
@@ -336,7 +348,7 @@ class App extends Component {
   setEditsAndRoute = (currentDeck, currentCard) => {
     this.setEdits(currentDeck, currentCard);
     //routes back to card list component
-    this.onRouteChange("cardList");
+    this.onRouteChange(this.state.editingFrom);
     this.toggleEditMode();
     // updates database after half a second to allow state to update on change
     setTimeout(() => {
@@ -503,7 +515,14 @@ class App extends Component {
     });
   }
 
+  //----------------------------------------------------------------------------------------------
 
+  //--------------------------- SEARCH FUNCTIONS ------------------------------------------------
+
+  // methods to update search field on user input
+  onSearchChange = (event) => {
+    this.setState({ searchField: event.target.value });
+  }
 
   //----------------------------------------------------------------------------------------------
 
@@ -579,7 +598,15 @@ class App extends Component {
                                   fetchUserData={this.fetchUserData}
                                   onRouteChange={this.onRouteChange}
                                 />
-                                : <h1>Error, route not found.</h1>
+                                : (route === "search"
+                                  ? <Search
+                                    decks={this.state.decks}
+                                    searchField={this.state.searchField}
+                                    onSearchChange={this.onSearchChange}
+                                    deleteCard={this.deleteCard}
+                                    setToEditCardMode={this.setToEditCardMode}
+                                  />
+                                  : <h1>route not found</h1>)
                               )
                             )
                         )
