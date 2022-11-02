@@ -15,6 +15,8 @@ const NavigationBar = ({ onRouteChange, changeRouteDecks, isSignedIn }) => {
                         className="f10 link dib white dim mr3 mr4-ns pointer">Decks</p>
                     <p onClick={() => onRouteChange("search")}
                         className="f10 link dib white dim mr3 mr4-ns pointer">Search</p>
+                    <p onClick={() => onRouteChange("stats")}
+                        className="f10 link dib white dim mr3 mr4-ns pointer">Stats</p>
                     <p onClick={() => onRouteChange("signOut")}
                         className="f10 link dib white dim mr3 mr4-ns pointer">Sign Out</p>
                 </div>

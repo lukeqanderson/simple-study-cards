@@ -9,6 +9,8 @@ import Card from './components/Card/Card';
 import DeckList from './components/DeckList/DeckList';
 import LoadingData from './components/LoadingData/LoadingData';
 import Search from './components/Search/Search';
+import Stats from './components/Stats/Stats';
+import LogList from './components/LogList/LogList'
 
 //imports time stamp for easy time tracking
 //note, to use time do timestamp.utc('YYYYMMDDHHmm')
@@ -22,7 +24,6 @@ const timestamp = require('time-stamp');
           2: Next review Timestamp
           3: SRS Level (space between next review)
           4: Unique Card Number*/
-
 
 class App extends Component {
   // constructor to define state of the App component
@@ -46,8 +47,35 @@ class App extends Component {
       cardAnswerIsHidden: true,
       editingCardQuestion: "",
       editingCardAnswer: "",
-      editingFrom: "cardList",
-      searchField: ""
+      // stores previous route for logging and going back to parent components
+      previousRoute: "",
+      searchField: "",
+      // array of logging data for study sessions to generate statistics
+      logs: [],
+      currentLog: 0,
+      // stats object for tracking stats from logs in machine and human 
+      // readable formats
+      stats: {
+        rightAnswerCount: 0,
+        totalAnswers: 0,
+        totalStudyTime: 0,
+        correctAnswerRatio: 0,
+        averageTimePerAnswer: 0,
+        bestDeck: "",
+        bestDeckRatio: 0,
+        worstDeck: "",
+        worstDeckRatio: 100
+      },
+      readableStats: {
+        totalAnswers: "",
+        totalStudyTime: "",
+        correctAnswerRatio: "",
+        averageTimePerAnswer: "",
+        bestDeck: "",
+        bestDeckRatio: "",
+        worstDeck: "",
+        worstDeckRatio: ""
+      }
     }
   }
 
@@ -57,25 +85,53 @@ class App extends Component {
   // route variable passed in as parameter, and changes the current
   // state of route
   onRouteChange = (newRoute) => {
+    let newState = this.state;
+    // updates to the new route
+    newState.previousRoute = newState.route;
+    newState.route = newRoute;
     if (newRoute === "signOut") {
       // changes state to reflect sign out
-      let newState = this.state;
       newState.isSignedIn = false;
       newState.currentUser = "";
+    }
+    if (newRoute === "home") {
+      newState.isSignedIn = true;
+    }
+    if (newRoute === "card" && !newState.editingCard) {
+      // populates logs for start of new session
+      newState.logs.push({
+        deckName: newState.decks[newState.currentDeck].name,
+        wrongAnswers: 0,
+        rightAnswers: 0,
+        // grabs UNIX timestamp and converts milliseconds to seconds
+        startTime: Math.floor(Date.now() / 1000),
+        endTime: 0
+      })
+    }
+    // updates end time if leaving study session and end time is not recorded
+    if (newRoute !== "card" && newState.logs.length > 0) {
+      if (newState.logs[newState.logs.length - 1].endTime === 0) {
+        // Grabs UNIX timestamp in seconds for finished study session
+        newState.logs[newState.logs.length - 1].endTime = Math.floor(Date.now() / 1000);
+      }
+    }
+    // generate stats on route to stats
+    if (newRoute === "stats") {
+      this.generateStats();
+    }
+
+    // sets the state and ensures logs are saved in all routing conditions 
+    if (newRoute === "signOut"
+      || newRoute === "card"
+      || (newRoute === "search" && newState.previousRoute === "card")
+      || (newRoute === "stats" && newState.previousRoute === "card")) {
+      this.setState({ newState }, () => {
+        this.saveData();
+      });
+    }
+    else {
       this.setState({ newState });
     }
-    else if (newRoute === "home") {
-      this.setState({ isSignedIn: true });
-    }
-    else if (newRoute === "cardList") {
-      // to return to card list after edits
-      this.setState({ editingFrom: "cardList" });
-    }
-    else if (newRoute === "search") {
-      // to return to search after edits
-      this.setState({ editingFrom: "search" });
-    }
-    this.setState({ route: newRoute });
   }
 
   // function to ensure deck counts are updated on route change to decks component
@@ -85,10 +141,9 @@ class App extends Component {
   }
 
   // function to toggle between editing and display mode
-  toggleEditMode = () => {
+  toggleEditMode = (currentMode) => {
     // gets the opposite of the current editing mode we are in
-    const oppositeMode = !this.state.editingCard;
-    this.setState({ editingCard: oppositeMode })
+    return !currentMode;
   }
 
   // sets the card to the mode for editing an individual card from the card list
@@ -96,9 +151,12 @@ class App extends Component {
     let newState = this.state;
     newState.currentCard = currentCard;
     newState.currentDeck = currentDeck;
-    this.setState({ newState });
-    this.toggleEditMode();
-    this.onRouteChange("card");
+    newState.editingCard = this.toggleEditMode(newState.editingCard);
+
+
+    this.onRouteChange("card", () => {
+      this.setState({ newState })
+    });
   }
 
   // fetches user data through post request to backend
@@ -302,9 +360,11 @@ class App extends Component {
       }
     }
     // sets the state to reflect changes
-    this.setState({ newState });
-    // sets the route to study
-    this.onRouteChange("card");
+    this.setState({ newState }, () => {
+      // sets the route to study
+      this.onRouteChange("card");
+    });
+
   }
 
 
@@ -322,20 +382,6 @@ class App extends Component {
     this.setState({ currentCard: newCardIndex });
   }
 
-  // function to change the question and answer
-  setEdits = (currentDeck, currentCard) => {
-    let newState = this.state;
-    // only sets edits if there have been edits made
-    if (newState.editingCardQuestion !== "")
-      newState.decks[currentDeck].cards[currentCard][0] = newState.editingCardQuestion;
-    if (newState.editingCardQuestion !== "")
-      newState.decks[currentDeck].cards[currentCard][1] = newState.editingCardAnswer;
-    // resets edit fields to detect new edits
-    newState.editingCardQuestion = "";
-    newState.editingCardAnswer = "";
-    this.setState({ newState });
-  }
-
   // functions to track changes when editing
   onEditCardQuestion = (event) => {
     this.setState({ editingCardQuestion: event.target.value });
@@ -346,14 +392,24 @@ class App extends Component {
 
   // function to set edits and route to correct parent element
   setEditsAndRoute = (currentDeck, currentCard) => {
-    this.setEdits(currentDeck, currentCard);
-    //routes back to card list component
-    this.onRouteChange(this.state.editingFrom);
-    this.toggleEditMode();
-    // updates database after half a second to allow state to update on change
-    setTimeout(() => {
-      this.saveData();
-    }, 500);
+    let newState = this.state;
+    // only sets edits if there have been edits made
+    if (newState.editingCardQuestion !== "")
+      newState.decks[currentDeck].cards[currentCard][0] = newState.editingCardQuestion;
+    if (newState.editingCardQuestion !== "")
+      newState.decks[currentDeck].cards[currentCard][1] = newState.editingCardAnswer;
+    // resets edit fields to detect new edits
+    newState.editingCardQuestion = "";
+    newState.editingCardAnswer = "";
+    //routes back to the previous route
+    let previousRoute = newState.route;
+    newState.route = newState.previousRoute;
+    newState.previousRoute = previousRoute;
+    newState.editingCard = this.toggleEditMode(newState.editingCard);
+    // updates state and db
+    this.setState({ newState }, () => {
+      this.saveData()
+    });
   }
 
   // function to add a new card and enter edit mode
@@ -361,12 +417,17 @@ class App extends Component {
     let newState = this.state;
     const newCardIndex = newState.decks[currentDeck].cards.length;
     newState.decks[currentDeck].cards.push(["", "", timestamp.utc("YYYYMMDDHHmm"), 0, newState.nextCardNumber++]);
-    this.setState({ newState });
-    this.setToEditCardMode(currentDeck, newCardIndex);
-    // updates database after half a second to allow state to update on change
-    setTimeout(() => {
+    newState.currentCard = newCardIndex;
+    newState.currentDeck = currentDeck;
+    // sets to editing mode
+    newState.editingCard = this.toggleEditMode(newState.editingCard);
+    // updatse current and previous routes
+    newState.previousRoute = newState.route;
+    newState.route = "card";
+    // sets state and updates db
+    this.setState({ newState }, () => {
       this.saveData();
-    }, 500);
+    })
   }
 
   // // method to determine if a year is a leap year
@@ -493,6 +554,10 @@ class App extends Component {
     newState.decks[currentDeck].studying.push(currentCardIndex);
     // sets the answer to hidden again
     newState.cardAnswerIsHidden = true;
+    // marks log as wrong
+    newState.logs[newState.logs.length - 1].wrongAnswers++;
+    // tracks right answer on total answers
+    newState.stats.totalAnswers++;
     this.setState({ newState }, () => {
       this.saveData();
     });
@@ -510,6 +575,11 @@ class App extends Component {
     newState.decks[currentDeck].studying.splice(0, 1);
     // sets the answer to hidden again
     newState.cardAnswerIsHidden = true;
+    // marks log as right
+    newState.logs[newState.logs.length - 1].rightAnswers++;
+    // tracks right answer on total answers and right answer count
+    newState.stats.totalAnswers++;
+    newState.stats.rightAnswerCount++;
     this.setState({ newState }, () => {
       this.saveData();
     });
@@ -522,6 +592,112 @@ class App extends Component {
   // methods to update search field on user input
   onSearchChange = (event) => {
     this.setState({ searchField: event.target.value });
+  }
+
+  //----------------------------------------------------------------------------------------------
+
+  //--------------------------- STATS FUNCTIONS ------------------------------------------------
+
+  // method to calculate stats from logs 
+  generateStats = () => {
+    // only generates stats if there is a log
+    if (this.state.logs.length > 0) {
+      let newState = this.state;
+      // clears original stats except counts to prevent acculuation over counted logs 
+      newState.stats = {
+        rightAnswerCount: newState.stats.rightAnswerCount,
+        totalAnswers: newState.stats.totalAnswers,
+        totalStudyTime: 0,
+        correctAnswerRatio: 0,
+        averageTimePerAnswer: 0,
+        bestDeck: "",
+        bestDeckRatio: 0,
+        worstDeck: "",
+        worstDeckRatio: 100
+      }
+      // calculates correct answer ration
+      newState.stats.correctAnswerRatio = Math.round((newState.stats.rightAnswerCount / newState.stats.totalAnswers) * 100);
+      // creates a hash map for access with Deck as the key and an array with [correct answers, total answers, time studied]
+      const deckMap = new Map();
+      // populates the Map
+      newState.logs.forEach((log) => {
+        // if deck is not present in the map, set the map to the first values in the log
+        if (!deckMap.has(log.deckName)) {
+          deckMap.set(log.deckName, [log.rightAnswers, log.rightAnswers + log.wrongAnswers, log.endTime - log.startTime]);
+        }
+        // if the deck is already present in the map, increment the values in the array of the current map
+        else {
+          deckMap.set(log.deckName,
+            [deckMap.get(log.deckName)[0] + log.rightAnswers,
+            deckMap.get(log.deckName)[1] + (log.rightAnswers + log.wrongAnswers),
+            deckMap.get(log.deckName)[2] + (log.endTime - log.startTime)]);
+
+        }
+      })
+      // loops through map to calculate deck specific statistics
+      deckMap.forEach((val, key) => {
+        // updates total study time
+        newState.stats.totalStudyTime += val[2];
+        // updates worst deck ratio of right answer to total answers to current minimum
+        if (Math.round((val[0] / val[1]) * 100) <= newState.stats.worstDeckRatio) {
+          newState.stats.worstDeckRatio = Math.round((val[0] / val[1]) * 100);
+          newState.stats.worstDeck = key;
+        }
+        // updates best deck ratio to greatest value
+        if (Math.round((val[0] / val[1]) * 100) >= newState.stats.bestDeckRatio) {
+          newState.stats.bestDeckRatio = Math.round((val[0] / val[1]) * 100);
+          newState.stats.bestDeck = key;
+        }
+      })
+      // updates average time per answer
+      newState.stats.averageTimePerAnswer = Math.round(newState.stats.totalStudyTime / newState.stats.totalAnswers);
+
+      // sets state with updated stats then generates them to human readable format
+      this.setState({ newState }, () => {
+        this.generateReadableStats();
+      });
+    }
+  }
+
+  // method to convert seconds to a string indicating number of days, hours, minutes, and seconds
+  convertSecondsToReadableString = (totalInSeconds) => {
+    let days = 0;
+    let hours = 0;
+    let minutes = 0;
+    let seconds = 0;
+    // calculates days first
+    days = Math.floor(totalInSeconds / 86400);
+    totalInSeconds %= 86400;
+    hours = Math.floor(totalInSeconds / 3600);
+    totalInSeconds %= 3600;
+    minutes = Math.floor(totalInSeconds / 60);
+    totalInSeconds %= 60;
+    seconds = totalInSeconds;
+    let outputString = "";
+    //only adds values except seconds if they are greater than 0
+    outputString += days > 0 ? "Days: " + days.toLocaleString("en-US") + ", " : "";
+    outputString += hours > 0 ? "Hours: " + hours.toString() + ", " : "";
+    outputString += minutes > 0 ? "Minutes: " + minutes.toString() + ", " : "";
+    outputString += "Seconds: " + seconds;
+    return outputString;
+  }
+
+  // method to generate readable stats
+  generateReadableStats = () => {
+    let newState = this.state;
+    let machineStats = this.state.stats;
+    let readableStats = this.state.readableStats;
+    readableStats.bestDeckRatio = machineStats.bestDeckRatio + "%";
+    readableStats.correctAnswerRatio = machineStats.correctAnswerRatio + "%";
+    readableStats.worstDeckRatio = machineStats.worstDeckRatio + "%";
+    readableStats.bestDeck = machineStats.bestDeck;
+    readableStats.worstDeck = machineStats.worstDeck;
+    readableStats.totalAnswers = machineStats.totalAnswers.toLocaleString("en-US");
+    readableStats.averageTimePerAnswer = this.convertSecondsToReadableString(machineStats.averageTimePerAnswer);
+    readableStats.totalStudyTime = this.convertSecondsToReadableString(machineStats.totalStudyTime);
+    newState.readableStats = readableStats;
+    // sets new readable stats to state
+    this.setState({ newState });
   }
 
   //----------------------------------------------------------------------------------------------
@@ -606,7 +782,20 @@ class App extends Component {
                                     deleteCard={this.deleteCard}
                                     setToEditCardMode={this.setToEditCardMode}
                                   />
-                                  : <h1>route not found</h1>)
+                                  : (route === "stats"
+                                    ? <Stats
+                                      logs={this.state.logs}
+                                      readableStats={this.state.readableStats}
+                                      onRouteChange={this.onRouteChange}
+                                    />
+                                    : (route === "logList"
+                                      ? <LogList
+                                        // reverses log for newest to older order
+                                        logs={this.state.logs.reverse()}
+                                        onRouteChange={this.onRouteChange}
+                                      />
+                                      : <h1>route not found</h1>))
+                                )
                               )
                             )
                         )
